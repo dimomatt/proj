@@ -21,6 +21,7 @@ use std::io::Read;
 use std::ops::Range;
 use std::os::raw::c_ulonglong;
 use std::ptr::{self, NonNull};
+use std::sync::Mutex;
 use ureq::{Agent, Request, Response};
 
 use crate::proj::{ProjError, _string};
@@ -29,12 +30,12 @@ use libc::c_void;
 use std::boxed::Box;
 use std::{thread, time};
 
-static HTTP_CLIENT: OnceCell<Agent> = OnceCell::new();
+static HTTP_CLIENT: Mutex<OnceCell<Agent>> = Mutex::new(OnceCell::new());
 
 // Creates
-fn get_http_client() -> &'static Agent
+fn get_http_client() -> Agent
 {
-    HTTP_CLIENT.get_or_init(|| Agent::new())
+    HTTP_CLIENT.lock().unwrap().get_or_init(|| Agent::new()).to_owned()
 }
 
 const CLIENT: &str = concat!("proj-rs/", env!("CARGO_PKG_VERSION"));
@@ -181,7 +182,7 @@ unsafe fn _network_open(
     // RANGE header definition is "bytes=x-y"
     let hvalue = format!("bytes={offset}-{end}");
     // Create a new client that can be reused for subsequent queries
-    let clt = get_http_client();
+    let clt = &get_http_client();
     let req = clt.get(&url);
     let with_headers = req.set("Range", &hvalue).set("Client", CLIENT);
     let in_case_of_error = with_headers.clone();
@@ -343,7 +344,7 @@ fn _network_read_range(
     let end = offset as usize + size_to_read - 1;
     let hvalue = format!("bytes={offset}-{end}");
     let hd = unsafe { &mut *(handle as *const c_void as *mut HandleData) };
-    let clt = get_http_client();
+    let clt = &get_http_client();
     let initial = clt.get(&hd.url);
     let in_case_of_error = initial.clone().set("Range", &hvalue).set("Client", CLIENT);
     let req = in_case_of_error.clone();
