@@ -28,6 +28,15 @@ use libc::c_void;
 use std::boxed::Box;
 use std::{thread, time};
 
+use std::cell::OnceCell;
+
+static HTTP_CLIENT: OnceCell<Agent> = OnceCell::new();
+
+fn get_http_client() -> &'static Agent
+{
+    HTTP_CLIENT.get_or_init(|| Agent::new())
+}
+
 const CLIENT: &str = concat!("proj-rs/", env!("CARGO_PKG_VERSION"));
 const MAX_RETRIES: u8 = 8;
 // S3 sometimes sends these in place of actual client errors, so retry instead of erroring
@@ -172,7 +181,7 @@ unsafe fn _network_open(
     // RANGE header definition is "bytes=x-y"
     let hvalue = format!("bytes={offset}-{end}");
     // Create a new client that can be reused for subsequent queries
-    let clt = Agent::new();
+    let clt = get_http_client();
     let req = clt.get(&url);
     let with_headers = req.set("Range", &hvalue).set("Client", CLIENT);
     let in_case_of_error = with_headers.clone();
@@ -334,7 +343,7 @@ fn _network_read_range(
     let end = offset as usize + size_to_read - 1;
     let hvalue = format!("bytes={offset}-{end}");
     let hd = unsafe { &mut *(handle as *const c_void as *mut HandleData) };
-    let clt = Agent::new();
+    let clt = get_http_client();
     let initial = clt.get(&hd.url);
     let in_case_of_error = initial.clone().set("Range", &hvalue).set("Client", CLIENT);
     let req = in_case_of_error.clone();
