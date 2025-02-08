@@ -14,6 +14,7 @@
 // This functionality based on https://github.com/OSGeo/PROJ/blob/master/src/networkfilemanager.cpp#L1675
 use proj_sys::{proj_context_set_network_callbacks, PJ_CONTEXT, PROJ_NETWORK_HANDLE};
 
+use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::io::Read;
@@ -28,10 +29,9 @@ use libc::c_void;
 use std::boxed::Box;
 use std::{thread, time};
 
-use std::cell::OnceCell;
-
 static HTTP_CLIENT: OnceCell<Agent> = OnceCell::new();
 
+// Creates
 fn get_http_client() -> &'static Agent
 {
     HTTP_CLIENT.get_or_init(|| Agent::new())

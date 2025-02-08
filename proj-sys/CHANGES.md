@@ -1,6 +1,6 @@
 # UNRELEASED
 
-- Your Change Here.
+- Store http agent to be reused when called by network fucntions
 
 # 0.25.0 - 2024-12-20
 
